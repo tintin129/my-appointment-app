@@ -1,6 +1,6 @@
 const { Resend } = require('resend');
 
-// Initialize Resend with the API key from environment variables
+// Initialize Resend with the API key from environment variabless
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // *** IMPORTANT: Ensure these environment variables are set in Vercel!
