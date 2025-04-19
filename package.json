@@ -1,0 +1,15 @@
+{
+  "name": "my-appointment-app",
+  "version": "1.0.0",
+  "description": "Simple appointment booking app with Vercel and Resend",
+  "main": "api/send-email.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "resend": "^4.3.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Me - Book an Appointment</title>
+
+    <!-- Link to the separate CSS file -->
+    <link rel="stylesheet" href="/style.css">
+
+    <!-- Font Awesome for icons (like the checkmark) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="profile-img">
+            <!-- Replace with your actual profile image -->
+            <img src="https://via.placeholder.com/200" alt="Profile Picture">
+        </div>
+        <h1>John Doe</h1>
+        <p>Full Stack Developer | Tech Enthusiast | Coffee Lover</p>
+    </header>
+
+    <div class="about-section">
+        <h2>About Me</h2>
+        <p>Hello there! I'm John, a passionate full stack developer with over 5 years of experience building web applications. I love turning complex problems into simple, beautiful, and intuitive designs.</p>
+
+        <p>My journey in tech began when I built my first website at 15. Since then, I've been continuously learning and exploring new technologies. I believe in writing clean, maintainable code and creating user-friendly experiences.</p>
+
+        <p>When I'm not coding, you can find me hiking in the mountains, experimenting with new coffee brewing methods, or reading science fiction novels. I'm also a big advocate for open source and regularly contribute to various projects.</p>
+
+        <h3>My Skills</h3>
+        <div class="skills">
+            <span class="skill-tag">JavaScript</span>
+            <span class="skill-tag">React</span>
+            <span class="skill-tag">Node.js</span>
+            <span class="skill-tag">Python</span>
+            <span class="skill-tag">MongoDB</span>
+            <span class="skill-tag">SQL</span>
+            <span class="skill-tag">Git</span>
+            <span class="skill-tag">Docker</span>
+        </div>
+
+        <button class="btn" id="bookBtn">Book an Appointment</button>
+    </div>
+
+    <!-- Modal for booking -->
+    <div id="bookingModal">
+        <div class="modal-content">
+            <span class="close">×</span>
+
+            <!-- Step 1: Select Date and Time -->
+            <div class="booking-step active" id="step1">
+                <h2>Select a Date & Time</h2>
+                <p>Choose a date:</p>
+                <input type="date" id="appointmentDate" min="" value="">
+
+                <p>Available time slots:</p>
+                <div class="time-slots" id="timeSlots">
+                    <!-- Time slots will be generated dynamically -->
+                </div>
+
+                <button class="btn" id="nextToStep2" disabled>Continue</button>
+            </div>
+
+            <!-- Step 2: Contact Information -->
+            <div class="booking-step" id="step2">
+                <h2>Your Information</h2>
+                <form id="contactForm">
+                    <input type="text" id="name" placeholder="Your Name" required>
+                    <input type="email" id="email" placeholder="Email Address" required>
+                    <input type="tel" id="phone" placeholder="Phone Number" required>
+                    <textarea id="message" placeholder="Any specific topics you'd like to discuss?" rows="3"></textarea>
+
+                    <button type="submit" class="btn" id="confirmBooking">Confirm Booking</button>
+                    <p class="error-message" id="formError"></p> <!-- For displaying form errors -->
+                </form>
+            </div>
+
+            <!-- Step 3: Confirmation -->
+            <div class="booking-step" id="step3">
+                <div class="confirmation">
+                    <i class="fas fa-check-circle"></i>
+                    <h2>Appointment Confirmed!</h2>
+                    <p>Thank you for booking an appointment with me.</p>
+                    <p id="confirmationDetails"></p>
+                    <p>An appointment request has been sent.</p> <!-- Changed message as email sending is async -->
+                    <button class="btn" id="closeConfirmation">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 John Doe. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Get current date for the date picker min attribute
+        const today = new Date();
+        const formattedDate = today.toISOString().split('T')[0];
+        document.getElementById('appointmentDate').min = formattedDate;
+        document.getElementById('appointmentDate').value = formattedDate; // Set default value to today
+
+        // Generate time slots for the selected date
+        function generateTimeSlots() {
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            timeSlotsContainer.innerHTML = ''; // Clear previous slots
+
+            // Generate time slots from 9 AM to 5 PM (17:00)
+            const startHour = 9;
+            const endHour = 17;
+
+            for (let hour = startHour; hour <= endHour; hour++) { // Include 5 PM
+                // Add slots for 00 and 30 minutes
+                for (let minutes = 0; minutes < 60; minutes += 30) {
+                     // Skip the 5:30 PM slot if endHour is 17
+                     if (hour === endHour && minutes > 0) continue;
+
+                    const timeSlot = document.createElement('div');
+                    timeSlot.className = 'time-slot';
+
+                    // Format the time (e.g., "9:00 AM", "2:30 PM", "5:00 PM")
+                    const period = hour >= 12 ? 'PM' : 'AM';
+                    // Convert 24-hour to 12-hour format, handle 12 PM and 12 AM
+                    const displayHour = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+                    const displayMinutes = minutes === 0 ? '00' : minutes;
+
+                    const timeString = `${displayHour}:${displayMinutes} ${period}`;
+                    timeSlot.textContent = timeString;
+
+                    // For demo: Randomly mark some slots as booked
+                    // In a real application, you would check a backend API based on the selected date
+                    if (Math.random() < 0.3) { // 30% chance to be booked
+                         timeSlot.classList.add('booked');
+                    } else {
+                        // Add click listener only if the slot is not booked
+                        timeSlot.addEventListener('click', function() {
+                            // Remove selected class from all time slots (that aren't booked)
+                            document.querySelectorAll('.time-slot:not(.booked)').forEach(slot => {
+                                slot.classList.remove('selected');
+                            });
+
+                            // Add selected class to the clicked time slot
+                            this.classList.add('selected');
+
+                            // Enable the continue button
+                            document.getElementById('nextToStep2').disabled = false;
+                        });
+                    }
+
+                    timeSlotsContainer.appendChild(timeSlot);
+                }
+            }
+        }
+
+        // Initialize time slots when the page loads
+        generateTimeSlots();
+
+        // Update time slots when date changes
+        document.getElementById('appointmentDate').addEventListener('change', function() {
+            generateTimeSlots();
+            // Disable continue button until a new slot is selected for the new date
+            document.getElementById('nextToStep2').disabled = true;
+        });
+
+        // Open the booking modal
+        document.getElementById('bookBtn').addEventListener('click', function() {
+            document.getElementById('bookingModal').style.display = 'block';
+            // Ensure step 1 is active and form is reset
+            resetBookingForm();
+            // Re-generate slots for today's date just in case
+             generateTimeSlots();
+        });
+
+        // Close the modal when clicking the X
+        document.querySelector('.close').addEventListener('click', function() {
+            document.getElementById('bookingModal').style.display = 'none';
+            resetBookingForm(); // Reset form when closing
+        });
+
+        // Close the modal when clicking outside the modal content
+        window.onclick = function(event) {
+            const modal = document.getElementById('bookingModal');
+            if (event.target === modal) {
+                modal.style.display = "none";
+                resetBookingForm(); // Reset form when closing
+            }
+        }
+
+        // Move to step 2
+        document.getElementById('nextToStep2').addEventListener('click', function() {
+            // Basic check if a slot is actually selected before proceeding
+            const selectedSlot = document.querySelector('.time-slot.selected');
+            if (!selectedSlot) {
+                 alert('Please select a time slot.'); // Should be disabled if none selected, but fallback check
+                 return;
+            }
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+        });
+
+        // Handle form submission
+        document.getElementById('contactForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Prevent default form submission
+
+            const formError = document.getElementById('formError');
+            formError.textContent = ''; // Clear previous errors
+
+            const selectedSlot = document.querySelector('.time-slot.selected');
+            if (!selectedSlot) {
+                 formError.textContent = 'Please select a time slot first.';
+                 return;
+            }
+
+            // Disable the confirm button to prevent double clicks and indicate loading
+            const confirmButton = document.getElementById('confirmBooking');
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Booking...';
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const message = document.getElementById('message').value;
+            const date = document.getElementById('appointmentDate').value; // YYYY-MM-DD format
+            const time = selectedSlot.textContent; // Formatted time string (e.g., "9:00 AM")
+
+            // Format date for display in confirmation message and for email (can send either format)
+            // Using UTC to avoid timezone issues with simple date strings
+            const dateObj = new Date(date + 'T00:00:00Z');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDateDisplay = dateObj.toLocaleDateString('en-US', options);
+
+
+            // Send data to our serverless function
+            try {
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        date: formattedDateDisplay, // Send the formatted date
+                        time: time,
+                        message: message
+                    }),
+                });
+
+                // Parse the JSON response regardless of success/failure status
+                const result = await response.json();
+
+                if (response.ok) { // Check for successful HTTP status codes (2xx)
+                    console.log('Booking successful!', result.message);
+
+                    // Display confirmation step
+                    document.getElementById('step2').classList.remove('active');
+                    document.getElementById('step3').classList.add('active');
+
+                    // Show appointment details in the confirmation message
+                    document.getElementById('confirmationDetails').innerHTML =
+                        `Your appointment is scheduled for <strong>${formattedDateDisplay}</strong> at <strong>${time}</strong>.`;
+
+                } else {
+                    // Handle errors from the serverless function
+                    console.error('Booking failed!', result.message || response.statusText);
+                    formError.textContent = result.message || 'An unexpected error occurred. Please try again.';
+                    // Stay on step 2 to show the error
+                }
+
+            } catch (error) {
+                console.error('Network error or unexpected issue:', error);
+                formError.textContent = 'Could not connect to the server. Please check your internet connection or try again later.';
+                 // Stay on step 2 to show the error
+            } finally {
+                 // Re-enable the confirm button regardless of success or failure
+                confirmButton.disabled = false;
+                confirmButton.textContent = 'Confirm Booking';
+            }
+        });
+
+
+        // Reset the booking form to its initial state (Step 1)
+        function resetBookingForm() {
+            // Reset step visibility
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step3').classList.remove('active');
+
+            // Reset form fields
+            document.getElementById('contactForm').reset();
+            document.getElementById('formError').textContent = ''; // Clear error message
+
+            // Disable 'Continue' button
+            document.getElementById('nextToStep2').disabled = true;
+
+            // Remove 'selected' class from time slots, keep 'booked'
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                if (!slot.classList.contains('booked')) {
+                    slot.classList.remove('selected');
+                }
+            });
+
+             // Ensure the "Confirm Booking" button is re-enabled and text is reset
+            const confirmButton = document.getElementById('confirmBooking');
+            confirmButton.disabled = false;
+            confirmButton.textContent = 'Confirm Booking';
+
+            // Reset date picker to today
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('appointmentDate').value = formattedDate;
+
+            // Re-generate time slots for the current date
+            generateTimeSlots();
+        }
+
+
+        // Close modal after confirmation
+        document.getElementById('closeConfirmation').addEventListener('click', function() {
+            document.getElementById('bookingModal').style.display = 'none';
+            resetBookingForm(); // Reset form when closing
+        });
+
+    </script>
+</body>
+</html>
