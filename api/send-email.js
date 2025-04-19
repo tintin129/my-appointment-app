@@ -3,12 +3,11 @@ const { Resend } = require('resend');
 // Initialize Resend with the API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// *** IMPORTANT: Replace these with your actual VERIFIED Resend sender email
-// *** and the email address you want to RECEIVE the booking notifications.
-// *** It's recommended to use environment variables for these as well in production.
-const senderEmail = process.env.SENDER_EMAIL || 'your-verified-sender@example.com'; // Replace placeholder if not using env var
-const recipientEmail = process.env.RECIPIENT_EMAIL || 'your-recipient-email@example.com'; // Replace placeholder if not using env var
-
+// *** IMPORTANT: Ensure these environment variables are set in Vercel!
+// SENDER_EMAIL: Your VERIFIED email address in Resend (used in the 'from' field for BOTH emails)
+// OWNER_NOTIFICATION_EMAIL: Your email address where you want to receive NOTIFICATIONS about bookings
+const senderEmail = process.env.SENDER_EMAIL;
+const ownerNotificationEmail = process.env.OWNER_NOTIFICATION_EMAIL; // Renamed from RECIPIENT_EMAIL for clarity
 
 module.exports = async (req, res) => {
   // Only allow POST requests
@@ -16,7 +15,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
-  // Parse the request body
+  // Parse the request body - contains user's form data
   const { name, email, phone, date, time, message } = req.body;
 
   // Basic validation
@@ -24,17 +23,20 @@ module.exports = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Missing required fields (name, email, date, time).' });
   }
 
-  // Email content using Resend's format
-  // 'from' address MUST be a verified sender/domain in your Resend account.
-  // 'to' is the recipient (you).
-  // 'reply_to' is the user's email, so you can easily reply to them.
-  const msg = {
-    to: recipientEmail, // The email address to send the booking notification TO (likely yours)
-    from: senderEmail, // The VERIFIED sender email address FROM your Resend account
+  // Validate sender and owner notification emails from environment variables
+  if (!senderEmail || !ownerNotificationEmail) {
+       console.error("Email configuration error: SENDER_EMAIL or OWNER_NOTIFICATION_EMAIL environment variable is not set.");
+       return res.status(500).json({ success: false, message: 'Server email configuration error.' });
+  }
+
+   // --- Prepare the EMAIL TO THE SITE OWNER (NOTIFICATION) ---
+   const ownerMsg = {
+    to: ownerNotificationEmail, // Send to the owner's email
+    from: senderEmail, // Must use a verified sender email/domain
     reply_to: email, // Set reply-to to the user's email
-    subject: `New Appointment Request from ${name}`,
+    subject: `New Appointment Booked by ${name}`, // Clear subject for owner
     text: `
-      You have a new appointment request!
+      A new appointment has been booked.
 
       Name: ${name}
       Email: ${email}
@@ -44,7 +46,7 @@ module.exports = async (req, res) => {
       Message: ${message || 'No message provided.'}
     `,
     html: `
-      <p>You have a new appointment request!</p>
+      <p>A new appointment has been booked.</p>
       <p><strong>Name:</strong> ${name}</p>
       <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
       <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
@@ -52,26 +54,64 @@ module.exports = async (req, res) => {
       <p><strong>Time:</strong> ${time}</p>
       <p><strong>Message:</strong><br/>${message ? message.replace(/\n/g, '<br/>') : 'No message provided.'}</p>
     `,
-  };
+   };
+
+   // --- Prepare the EMAIL TO THE USER (CONFIRMATION) ---
+   const userMsg = {
+    to: email, // Send to the user's email address from the form
+    from: senderEmail, // Must use a verified sender email/domain
+    reply_to: ownerNotificationEmail, // Set reply-to to the owner's email
+    subject: `Your Appointment with John Doe is Confirmed!`, // Clear subject for user
+    text: `
+      Hi ${name},
+
+      Thank you for booking an appointment!
+
+      Your appointment is scheduled for:
+      Date: ${date}
+      Time: ${time}
+
+      We look forward to speaking with you!
+
+      Best regards,
+      John Doe
+    `,
+    html: `
+      <p>Hi ${name},</p>
+      <p>Thank you for booking an appointment!</p>
+      <p>Your appointment is scheduled for:</p>
+      <p><strong>Date:</strong> ${date}</p>
+      <p><strong>Time:</strong> ${time}</p>
+      <p>We look forward to speaking with you!</p>
+      <p>Best regards,<br/>John Doe</p>
+    `,
+   };
+
 
   try {
-    // Use Resend's send method
-    const data = await resend.emails.send(msg);
-    console.log('Resend email sent successfully', data);
-    res.status(200).json({ success: true, message: 'Appointment request sent successfully!', data: data });
+    // Send BOTH emails in parallel
+    const [ownerResponse, userResponse] = await Promise.all([
+        resend.emails.send(ownerMsg),
+        resend.emails.send(userMsg)
+    ]);
+
+    console.log('Emails sent successfully:');
+    console.log('Owner Notification:', ownerResponse);
+    console.log('User Confirmation:', userResponse);
+
+    res.status(200).json({ success: true, message: 'Appointment request sent successfully, confirmation email dispatched!' });
 
   } catch (error) {
-    console.error('Resend email sending error:', error);
+    console.error('Error sending emails:', error);
 
-    // Log specific Resend error details if available
-    let errorMessage = 'Failed to send appointment request.';
-    if (error.name) errorMessage += ` Error Type: ${error.name}.`;
+    let errorMessage = 'Failed to send one or both appointment emails.';
     if (error.message) errorMessage += ` Details: ${error.message}.`;
 
-    // Provide more detailed error info in development logs but not necessarily to the user
-    if (process.env.NODE_ENV !== 'production') {
-        console.error('Full error object:', error);
-    }
+    // Log specific details if available (Resend errors often have a 'name' or 'response' property)
+     if (process.env.NODE_ENV !== 'production') {
+         console.error('Full error object:', error);
+     }
+
 
     res.status(500).json({ success: false, message: errorMessage, error: error });
   }
